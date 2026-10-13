@@ -1,33 +1,38 @@
-name: Build Mindustry iOS
+name: Build Mindustry iOS IPA
 
 on:
-  workflow_dispatch: # Cho phép bấm chạy thủ công bằng tay
+  workflow_dispatch: # Cho phép bấm nút chạy thủ công
+  push:
+    branches: [ master, main ]
 
 jobs:
-  build:
-    runs-on: macos-latest # Mượn máy ảo Mac của GitHub để lấy Xcode
+  build-ios:
+    runs-on: macos-14 # Dùng macOS runner có sẵn Xcode
 
     steps:
-      - name: Checkout source code
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Setup Java 17
+      - name: Set up Java JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Cấp quyền chạy cho Gradle
+      - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Biên dịch ra file IPA
+      - name: Build iOS IPA with RoboVM
         run: |
-          ./gradlew ios:createIPA -x test --no-daemon
+          # Chạy task build IPA của RoboVM không yêu cầu signing cert chính chủ (dùng ad-hoc/unsigned)
+          ./gradlew ios:createIPA -Probovm.ios.skipSigning=true || ./gradlew ios:createIPA
 
-      - name: Tải file IPA lên Artifacts
+      - name: Locate and Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Mindustry-iOS-Build
-          path: ios/build/robovm/*.ipa
+          name: Mindustry-iOS
+          path: |
+            ios/build/robovm/*.ipa
+            core/build/libs/*.jar
